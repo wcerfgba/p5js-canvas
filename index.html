@@ -19,22 +19,38 @@ function draw() {
     createCanvas(3000, 2000).parent('canvas');
   }
 
-  const cm = CodeMirror.fromTextArea(
+  const jar = CodeMirror.fromTextArea(
     document.querySelector('#sauce'), {
       mode: 'javascript',
       lineWrapping: true
   });
   
-  cm.on('blur', cookSauce);
+if (
+  typeof window.location.hash === 'string' &&
+  window.location.hash.charAt(0) === '#'
+) {
+  thawSauce();
+}
+
+  jar.on('blur', cookSauce);
 
   cookSauce();
 
   function cookSauce() {
     document.querySelector('#pot').remove();
     const newPot = document.createElement('script');
-    newPot.text = cm.getValue();
+    newPot.text = jar.getValue();
     newPot.id = 'pot';
     document.body.appendChild(newPot);
+    freezeSauce();
+  }
+
+  function freezeSauce() {
+    window.location.hash = btoa(jar.getValue());
+  }
+
+  function thawSauce() {
+    jar.setValue(atob(window.location.hash.slice(1)));
   }
 </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.33.0/codemirror.css">
@@ -60,6 +76,7 @@ function draw() {
     height: 100%;
     z-index: 2;
     resize: both;
+    overflow: scroll;
     background: #fcfcfcf0;
   }
 </style>

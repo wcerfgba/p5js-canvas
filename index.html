@@ -1,0 +1,65 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<textarea id="sauce">
+function draw() {
+  if (mouseIsPressed) {
+    fill(0);
+  } else {
+    fill(255);
+  }
+  ellipse(mouseX, mouseY, 80, 80);
+}
+</textarea>
+<div id="canvas"></div>
+<script id="pot"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.33.0/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.33.0/mode/javascript/javascript.min.js" integrity="sha256-AZSIPzjrc6unqannlAp/r264kf3nZGOOdPRcgYJ0J0c=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.6.0/p5.js"></script>
+<script>
+  function setup() {
+    createCanvas(3000, 2000).parent('canvas');
+  }
+
+  const cm = CodeMirror.fromTextArea(
+    document.querySelector('#sauce'), {
+      mode: 'javascript',
+      lineWrapping: true
+  });
+  
+  cm.on('blur', cookSauce);
+
+  cookSauce();
+
+  function cookSauce() {
+    document.querySelector('#pot').remove();
+    const newPot = document.createElement('script');
+    newPot.text = cm.getValue();
+    newPot.id = 'pot';
+    document.body.appendChild(newPot);
+  }
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.33.0/codemirror.css">
+<style>
+  body {
+    margin: 0;
+  }
+
+  #canvas {
+    position: absolute;
+    overflow: hidden;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
+
+  .CodeMirror {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    z-index: 2;
+    resize: both;
+    background: #fcfcfcf0;
+  }
+</style>

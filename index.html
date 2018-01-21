@@ -92,25 +92,27 @@ require([
   function demoSauce() {
     return `Wanderer = class {
   constructor(params) {
-    this._x     = params._x     || 0.4 * randUnit() + 0.2;
-    this._y     = params._y     || 0.4 * randUnit() + 0.2;
-    this._dx    = params._dx    || 1.0 * randUnit();
-    this._dy    = params._dy    || 1.0 * randUnit();
-    this.color  = params.color  || \`rgb(0, \${floor(random() * 156) + 100}, \${floor(random() * 156) + 100})\`;
-    this.size   = 2;
+    this._x     = params._x     || randUnit();
+    this._y     = params._y     || randUnit();
+    this._dx    = params._dx    || 0.0;
+    this._dy    = params._dy    || 0.0;
+    this.color  = params.color  || \`rgb(0, \${floor(random() * 127) + 128}, \${floor(random() * 127) + 128})\`;
+    this.size   = params.size   || 2;
   };
 
   tick() {
-    const wallX   = -1  * 0.160 * Math.sign(this._x)            * log(abs(this._x) + 1);
-    const wallY   = -1  * 0.160 * Math.sign(this._y)            * log(abs(this._y) + 1);
-    const centerX =       0.110 * cos(atan2(this._y, this._x))  * log(1 - mag(this._x, this._y) + 1);
-    const centerY =       0.110 * sin(atan2(this._y, this._x))  * log(1 - mag(this._x, this._y) + 1);
-    const spinX   =  0  * 0.001 * Math.sign(this._y);
-    const spinY   = -0  * 0.001 * Math.sign(this._x);
+    const wallX   = -1  * 0.05 * cos(atan2(this._y, this._x))  * log(mag(this._x, this._y) + 1);
+    const wallY   = -1  * 0.05 * sin(atan2(this._y, this._x))  * log(mag(this._x, this._y) + 1);
+    const centerX =       0.05 * cos(atan2(this._y, this._x))  * log(1 - mag(this._x, this._y) + 1);
+    const centerY =       0.05 * sin(atan2(this._y, this._x))  * log(1 - mag(this._x, this._y) + 1);
+    const wobbleX =       0.01 * randUnit();
+    const wobbleY =       0.01 * randUnit();
     this._x   += 0.003 * this._dx;
     this._y   += 0.003 * this._dy;
-    this._dx  += wallX + centerX + spinX;
-    this._dy  += wallY + centerY + spinY;
+    this._dx  += wallX + centerX + wobbleX;
+    this._dy  += wallY + centerY + wobbleY;
+    this._dx = constrain(this._dx, -1.0, 1.0);
+    this._dy = constrain(this._dy, -1.0, 1.0);
   };
 
   draw() {
@@ -131,13 +133,12 @@ require([
 // Use an IIFE which sets a flag for initialization on 
 // page load, instead of p5.js's \`setup\` function
 window.initialized = window.initialized || (() => {
-  background('#fbfafa');
   return true;
 })();
 
 window.wanderers = window.wanderers || [];
 
-for (let i = 0; i < 5; i++) {
+for (let i = 0; i < 50; i++) {
   window.wanderers[i] = 
     newOrRebuild(
       Wanderer,
@@ -146,6 +147,10 @@ for (let i = 0; i < 5; i++) {
 }
 
 function draw() {
+  blendMode(MULTIPLY);
+  fill(0, 0, 0, 3);
+  rect(0, 0, width, height);
+  blendMode(LIGHTEST);
   for (let i = 0; i < window.wanderers.length; i++) {
     const wanderer = window.wanderers[i];
     for (let j = 0; j < 3; j++) {

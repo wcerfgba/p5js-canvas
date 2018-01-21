@@ -1,74 +1,71 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<div id="cupboard">
-  <textarea id="sauce">
-Wanderer = function () {
-  this._x = Math.random() - 0.5;
-  this._y = Math.random() - 0.5;
-  this._dx = Math.random() - 0.5;
-  this._dy = Math.random() - 0.5;
-  this.color = `rgb(0, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)})`;
-};
-
-Wanderer.prototype.tick = function () {
-  this._x += this._dx;
-  this._y += this._dy;
-  const wallX = -1 * 0.5 * Math.sign(this._x) * log(abs(this._x) + 1);
-  const wallY = -1 * 0.5 * Math.sign(this._y) * log(abs(this._y) + 1);
-  const centerX = 1 * 0.5 * Math.sign(this._x) * log(1 - abs(this._x) + 1);
-  const centerY = 1 * 0.5 * Math.sign(this._y) * log(1 - abs(this._y) + 1);
-  this._dx += wallX + centerX;
-  this._dy += wallY + centerY;
-};
-
-Wanderer.prototype.x = function () {
-  return (this._x + 1) * (windowWidth / 2);
-};
-
-Wanderer.prototype.y = function () {
-  return (this._y + 1) * (windowHeight / 2);
-};
-
-wanderers = [];
-
-for (let i = 0; i < 200; i++) {
-  wanderers[i] = new Wanderer();
-}
-
-function draw() {
-  for (let i = 0; i < wanderers.length; i++) {
-    const wanderer = wanderers[i];
-    wanderer.tick();
-    dragTrail(wanderer.x(), wanderer.y(), wanderer.color);
-  }
-}
-
-function dragTrail(x, y, col) {
-  fill(col);
-  noStroke();
-  ellipse(x, y, 1, 1);
-}
-  </textarea>
-</div>
-<div id="canvas"></div>
+<div id="shelf"></div>
+<div id="bowl"></div>
 <script id="pot"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.33.0/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.33.0/mode/javascript/javascript.min.js" integrity="sha256-AZSIPzjrc6unqannlAp/r264kf3nZGOOdPRcgYJ0J0c=" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.6.0/p5.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.5/require.js"></script>
 <script>
-  function setup() {
-    createCanvas(displayWidth, displayHeight).parent('canvas');
+// Before loading vs/editor/editor.main, define a global MonacoEnvironment that overwrites
+// the default worker url location (used when creating WebWorkers). The problem here is that
+// HTML5 does not allow cross-domain web workers, so we need to proxy the instantiation of
+// a web worker through a same-domain script
+window.MonacoEnvironment = {
+  getWorkerUrl: function(workerId, label) {
+    return 'monaco-editor-worker-loader-proxy.js';
+  }
+};
+
+require.config({
+  paths: {
+    'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.10.1/min/vs'
+  },
+  waitSeconds: 0
+});
+
+require([
+  'https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/css-element-queries/1.0.1/ElementQueries.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/css-element-queries/1.0.1/ResizeSensor.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.6.0/p5.js',
+  'vs/editor/editor.main'
+], function (
+  _,
+  ElementQueries,
+  ResizeSensor,
+  p5
+) {
+  class Jar {
+    constructor() {
+      const shelf = document.querySelector('#shelf');
+      this.monaco = monaco.editor.create(shelf, {
+        value: demoSauce(),
+        language: 'javascript',
+        minimap: {
+          enabled: false
+        }
+      });
+      this.monaco.onDidBlurEditor(cookSauce);
+      this.monaco.getModel().onDidChangeContent(freezeSauce);
+      new ResizeSensor(shelf, _.debounce(() => this.monaco.layout(), 100));
+    }
+
+    getValue() {
+      return this.monaco.getModel().getValue();
+    }
+
+    setValue(val) {
+      return this.monaco.getModel().setValue(val);
+    }
   }
 
-  const jar = CodeMirror.fromTextArea(
-    document.querySelector('#sauce'), {
-      mode: 'javascript'
-  });
+  window.setup = function () {
+    createCanvas(displayWidth, displayHeight).parent('bowl');
+  };
+
+  const jar = new Jar();
+
+  new p5(false, true);
 
   thawSauce();
-
-  jar.on('blur', cookSauce);
-
-  cookSauce();
 
   function cookSauce() {
     document.querySelector('#pot').remove();
@@ -76,7 +73,6 @@ function dragTrail(x, y, col) {
     newPot.text = jar.getValue();
     newPot.id = 'pot';
     document.body.appendChild(newPot);
-    freezeSauce();
   }
 
   function freezeSauce() {
@@ -85,21 +81,100 @@ function dragTrail(x, y, col) {
 
   function thawSauce() {
     if (
-      typeof window.location.hash !== 'string' ||
-      window.location.hash.charAt(0) !== '#'
+      typeof window.location.hash === 'string' &&
+      window.location.hash.charAt(0) === '#'
     ) {
-      return;
+      jar.setValue(atob(window.location.hash.slice(1)));
     }
-    jar.setValue(atob(window.location.hash.slice(1)));
+    cookSauce();
   }
+
+  function demoSauce() {
+    return `Wanderer = class {
+  constructor(params) {
+    this._x     = params._x     || 0.4 * randUnit() + 0.2;
+    this._y     = params._y     || 0.4 * randUnit() + 0.2;
+    this._dx    = params._dx    || 1.0 * randUnit();
+    this._dy    = params._dy    || 1.0 * randUnit();
+    this.color  = params.color  || \`rgb(0, \${floor(random() * 156) + 100}, \${floor(random() * 156) + 100})\`;
+    this.size   = 2;
+  };
+
+  tick() {
+    const wallX   = -1  * 0.160 * Math.sign(this._x)            * log(abs(this._x) + 1);
+    const wallY   = -1  * 0.160 * Math.sign(this._y)            * log(abs(this._y) + 1);
+    const centerX =       0.110 * cos(atan2(this._y, this._x))  * log(1 - mag(this._x, this._y) + 1);
+    const centerY =       0.110 * sin(atan2(this._y, this._x))  * log(1 - mag(this._x, this._y) + 1);
+    const spinX   =  0  * 0.001 * Math.sign(this._y);
+    const spinY   = -0  * 0.001 * Math.sign(this._x);
+    this._x   += 0.003 * this._dx;
+    this._y   += 0.003 * this._dy;
+    this._dx  += wallX + centerX + spinX;
+    this._dy  += wallY + centerY + spinY;
+  };
+
+  draw() {
+    fill(this.color);
+    noStroke();
+    ellipse(this.x, this.y, this.size, this.size);
+  }
+
+  get x() {
+    return (this._x + 1) * (windowWidth / 2);
+  };
+
+  get y() {
+    return (this._y + 1) * (windowHeight / 2);
+  };
+};
+
+// Use an IIFE which sets a flag for initialization on 
+// page load, instead of p5.js's \`setup\` function
+window.initialized = window.initialized || (() => {
+  background('#fbfafa');
+  return true;
+})();
+
+window.wanderers = window.wanderers || [];
+
+for (let i = 0; i < 5; i++) {
+  window.wanderers[i] = 
+    newOrRebuild(
+      Wanderer,
+      window.wanderers[i]
+    );
+}
+
+function draw() {
+  for (let i = 0; i < window.wanderers.length; i++) {
+    const wanderer = window.wanderers[i];
+    for (let j = 0; j < 3; j++) {
+      wanderer.tick();
+      wanderer.draw();
+    }
+  }
+}
+
+function newOrRebuild(klass, obj) {
+  if (obj != null) {
+    return new klass(obj);
+  }
+  return new klass({});
+}
+
+function randUnit() {
+  return 2 * (random() - 0.5);
+}`;
+  }
+});
 </script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.33.0/codemirror.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.10.1/min/vs/editor/editor.main.css" integrity="sha256-2HiLV16hBsfTgFEvAitDCQkXtBIyBROeLVntVZrKBJg=" crossorigin="anonymous" />
 <style>
   body {
     margin: 0;
   }
 
-  #canvas {
+  #bowl {
     position: absolute;
     overflow: hidden;
     top: 0;
@@ -109,27 +184,21 @@ function dragTrail(x, y, col) {
     z-index: 1;
   }
 
-  #cupboard {
+  #shelf {
     position: absolute;
     top: 0;
     left: 0;
-    width: 30rem;
-    max-height: 100%;
-    height: 100%;
+    width: 25%;
+    height: 25%;
     z-index: 2;
-    resize: both;
     overflow: scroll;
-    background: #fcfcfcf0;
-  }
-
-  .CodeMirror {
-    width: 100%;
-    height: 100%;
+    resize: both;
     background: none;
   }
 
-  .CodeMirror-scroll {
-    margin: 0;
-    padding: 0;
+  .monaco-editor,
+  .monaco-editor-background,
+  .monaco-editor .margin {
+    background: #fcfcfca0;
   }
 </style>
